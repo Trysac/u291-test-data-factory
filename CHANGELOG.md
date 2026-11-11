@@ -9,4 +9,5 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Added typed test data factory for Python dataclasses with seeded reproducibility, sequence/lazy overrides, range metadata, recursion handling, and strict error codes.
 - Initial project structure from the factory utility template.

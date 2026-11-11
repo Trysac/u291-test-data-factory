@@ -3,27 +3,29 @@
 ## Running
 
 ```sh
-uv run pytest --cov=test_data_factory   # tests with coverage report
-uv run python scripts/check.py      # every gate, as CI and the factory run it
+uv run pytest tests/test_test_data_factory.py
 ```
+
+The test suite is `tests/test_test_data_factory.py`, which imports the public names from `test_data_factory`: `Factory`, `FactoryError`, `Lazy` and `Sequence`.
 
 ## Policy
 
-- Branch coverage of `src/test_data_factory` must stay at or above 80 %; the gate fails below it.
-- Tests exercise the public API (`import test_data_factory`) and assert every observable effect:
-  return values, raised exceptions and their messages.
-- Each bug fix starts with a failing test that reproduces it.
-- Tests are deterministic: no network, no wall clock, no dependence on test order.
+The tests assert public behavior: returned dataclass instances, generated field values, raised `FactoryError` codes and the effect of overrides. They do not use network access or external tools. Determinism is checked by comparing batches from separate `Factory` instances created with the same seed.
 
 ## Tiers
 
-- Local tier (every gate run, coverage measured here): unit and property tests, plus conformance on small
-  fixtures kept in the repository.
-- CI tier: conformance that needs an external tool or a download. Mark them `@pytest.mark.conformance`; `scripts/check.py` deselects them locally
-  (unless `FABRICA_CI=1`). The CI `conformance` job sets `FABRICA_CI=1` and runs the full suite. Tools are installed
-  by the optional `ci/conformance-setup.sh` (bash, CI only; verify every download against a pinned SHA-256), and
-  tagged tests skip cleanly when their tool is missing.
+The repository contains a single pytest tier: the acceptance tests in `tests/test_test_data_factory.py`. The test functions in that file are:
+
+- `test_acceptance_user_first_build`: checks the first `Factory(User, seed=42).build()` result (`User(id=640, name='name-1', active=True)`).
+- `test_acceptance_user_second_build`: checks the second build uses the 1-based build counter and returns `User(id=275, name='name-2', active=True)`.
+- `test_acceptance_deterministic_batch`: checks two `Factory(User, seed=42)` instances produce equal `build_batch` lists and `seed=43` produces a different list.
+- `test_acceptance_override_consumes_draw`: checks `Factory(User, seed=42).build(id=7)` keeps the other fields equal to an unoverridden build because the overridden field still consumes its draw.
+- `test_acceptance_sequence_and_lazy`: checks `Sequence` produces `user1@example.com`, `user2@example.com` and `Lazy` produces an uppercased label from a previous field.
+- `test_acceptance_lazy_uses_generated_name`: checks `Lazy` receives the generated `name` value and produces the corresponding uppercase label.
+- `test_acceptance_types`: checks generated values for `Enum`, `Literal['a', 'b']`, `Optional[int]`, `list[int]` (1 to 3 items), `date` (2026), `datetime` (UTC-aware, 2026), `Decimal`, `UUID` (version 4) and a nested dataclass.
+
+The file also defines dataclasses used by the suite: `User`, `LabelUser`, `Node`, `BadNonOptionalNode`, `FrozenUser`, `InitFalseUser`, `KwOnlyUser`, `Color`, `Nested`, `AllTypes`, `RangeInt`, `BadRange`, `UseDefault`, `NotADataclass` and `Plain`.
 
 ## Layout
 
-`tests/test_<module>.py` mirrors each public module. Shared fixtures go in `tests/conftest.py`.
+Tests live in `tests/test_test_data_factory.py`. The repository contents include no separate `tests/conftest.py`.
